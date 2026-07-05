@@ -1,0 +1,7 @@
+spring.application.name: "kelbeth"
+
+spring:
+  jwt:
+    secret: "DuDD2CVguvB7TniastytzX5NLm8ESDNrywszQZ4OQ8f"
+    access-expiration: 3600000 # 1 hour in milliseconds
+    refresh-expiration: 604800000 # 7 days in milliseconds
