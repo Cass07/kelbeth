@@ -4,6 +4,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.Map;
 
 import javax.crypto.SecretKey;
 
@@ -22,12 +23,12 @@ import io.jsonwebtoken.security.Keys;
  * 이 클래스는 JWT 서명만 검증한다
  */
 @Component
-public class JWTManagerV1 implements IJWTManager {
+public class JwtManagerV1 implements IJwtManager {
 
 	private final SecretKey key;
 	private static final String ISSUER = "kelbeth";
 
-	public JWTManagerV1(@Value("${spring.jwt.secret}") String secretKey) {
+	public JwtManagerV1(@Value("${spring.jwt.secret}") String secretKey) {
 		byte[] keyBytes = Base64.getDecoder().decode(secretKey);
 		this.key = Keys.hmacShaKeyFor(keyBytes);
 	}
@@ -41,11 +42,17 @@ public class JWTManagerV1 implements IJWTManager {
 	public boolean validateToken(String token) {
 
 		try {
-			Jwts.parser()
+			Jws<Claims> claims = Jwts.parser()
 				.verifyWith(key)
 				.build()
 				.parseSignedClaims(token);
-		} catch (Exception e) {
+
+			// 임시 issuer check
+			String issuer = claims.getPayload().get("iss", String.class);
+			if (!ISSUER.equals(issuer)) {
+				throw new JwtException("Invalid issuer");
+			}
+		} catch (Exception _) {
 			// exception handling은 나중에한대
 			return false;
 		}
@@ -61,7 +68,7 @@ public class JWTManagerV1 implements IJWTManager {
 	 * @throws JwtException 유효하지 않은 토큰일 경우 발생
 	 */
 	@Override
-	public HashMap<String, String> getClaims(String token) throws JwtException {
+	public HashMap<String, String> validateAndParseClaim(String token) throws JwtException {
 		Jws<Claims> claims = Jwts.parser()
 			.verifyWith(key)
 			.build()
@@ -83,12 +90,12 @@ public class JWTManagerV1 implements IJWTManager {
 	 * @return JWT 토큰 String
 	 */
 	@Override
-	public String generateToken(HashMap<String, String> claims, LocalDateTime issuedAt, long expirationMillis) {
+	public String generateToken(Map<String, String> claims, LocalDateTime issuedAt, long expirationMillis) {
 		Timestamp issuedAtTimestamp = Timestamp.valueOf(issuedAt);
 		Timestamp expirationTimestamp = new Timestamp(issuedAtTimestamp.getTime() + expirationMillis);
 
 		return Jwts.builder()
-			.issuer(JWTManagerV1.ISSUER)
+			.issuer(JwtManagerV1.ISSUER)
 			.issuedAt(issuedAtTimestamp)
 			.expiration(expirationTimestamp)
 			.claims(claims)

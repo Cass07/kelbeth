@@ -14,10 +14,10 @@ import org.springframework.test.context.ActiveProfiles;
 
 @ActiveProfiles("test")
 @ExtendWith(MockitoExtension.class)
-class JWTManagerV1Test {
+class JwtManagerV1Test {
 
 	@InjectMocks
-	JWTManagerV1 jwtManagerV1 = new JWTManagerV1("DuDD2CVguvB7TniastytzX5NLm8ESDNrywszQZ4OQ8f");
+	JwtManagerV1 jwtManagerV1 = new JwtManagerV1("DuDD2CVguvB7TniastytzX5NLm8ESDNrywszQZ4OQ8f");
 
 	@DisplayName("ValidateToken 성공")
 	@Test
@@ -47,14 +47,14 @@ class JWTManagerV1Test {
 
 	@DisplayName("GetClaims 성공")
 	@Test
-	void testGetClaimsSuccess() {
+	void testValidateAndParseClaimSuccess() {
 		// Given
 		HashMap<String, String> claims = new HashMap<>();
 		claims.put("userId", "12345");
 		String token = jwtManagerV1.generateToken(claims, LocalDateTime.now(), 60000);
 
 		// When
-		HashMap<String, String> extractedClaims = jwtManagerV1.getClaims(token);
+		HashMap<String, String> extractedClaims = jwtManagerV1.validateAndParseClaim(token);
 
 		// Then
 		assertEquals("12345", extractedClaims.get("userId"));
@@ -62,14 +62,12 @@ class JWTManagerV1Test {
 
 	@DisplayName("GetClaims에서 유효하지 않은 토큰으로 Exception 발생")
 	@Test
-	void testGetClaimsInvalidToken() {
+	void testValidateAndParseClaimInvalidToken() {
 		// Given
 		String token = "invalidToken";
 
 		// When & Then
-		assertThrows(io.jsonwebtoken.JwtException.class, () -> {
-			jwtManagerV1.getClaims(token);
-		});
+		assertThrows(io.jsonwebtoken.JwtException.class, () -> jwtManagerV1.validateAndParseClaim(token));
 	}
 
 
