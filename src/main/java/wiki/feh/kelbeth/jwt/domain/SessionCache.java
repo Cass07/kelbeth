@@ -9,17 +9,13 @@ import lombok.Getter;
 @Getter
 public class SessionCache {
 	private String sessionId;
-	private String uuid;
+	private String jti;
 
 	private LocalDateTime expiration;
 
-	public SessionCache(String sessionId, String uuid) {
+	public SessionCache(String sessionId, String jti) {
 		this.sessionId = sessionId;
-		this.uuid = uuid;
+		this.jti = jti;
 		this.expiration = null;
-	}
-
-	public SessionCache updateUUID(String uuid) {
-		return new SessionCache(this.sessionId, uuid, this.expiration);
 	}
 }

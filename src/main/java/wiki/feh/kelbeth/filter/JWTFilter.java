@@ -1,45 +1,76 @@
 package wiki.feh.kelbeth.filter;
 
+import org.jspecify.annotations.NullMarked;
+import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import wiki.feh.kelbeth.jwt.util.JWTManagerV1;
+import wiki.feh.kelbeth.jwt.facade.TokenAuthFacade;
 
 @RequiredArgsConstructor
+@NullMarked
 @Slf4j
 @Component
 public class JWTFilter extends AbstractGatewayFilterFactory<JWTFilter.Config> {
-	private final JWTManagerV1 jwtManager;
+	private static final String HEADER_AUTH_USER_ID = "X-Auth-UserId";
+	private static final String HEADER_AUTH_SESSION_ID = "X-Auth-SessionId";
+	private static final String HEADER_AUTH_JTI = "X-Auth-Jti";
+
+	private final TokenAuthFacade tokenAuthFacade;
 
 	public static class Config {
 		// Put the configuration properties for your filter here
 	}
 
 	@Override
-	public org.springframework.cloud.gateway.filter.GatewayFilter apply(Config config) {
+	public GatewayFilter apply(Config config) {
 		return (exchange, chain) -> {
-			String token = exchange.getRequest().getHeaders().getFirst("Authorization");
-			if (token != null && token.startsWith("Bearer ")) {
-				token = token.substring(7);
-				try {
-					if (!jwtManager.validateToken(token)) {
-						log.warn("Invalid JWT token");
-						exchange.getResponse().setStatusCode(org.springframework.http.HttpStatus.UNAUTHORIZED);
-						return exchange.getResponse().setComplete();
-					}
-				} catch (Exception e) {
-					log.error("Error validating JWT token", e);
-					exchange.getResponse().setStatusCode(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR);
-					return exchange.getResponse().setComplete();
-				}
-			} else {
+			String authHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
+
+			if (authHeader == null || !authHeader.startsWith("Bearer ")) {
 				log.warn("Missing or invalid Authorization header");
-				exchange.getResponse().setStatusCode(org.springframework.http.HttpStatus.UNAUTHORIZED);
+				exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
 				return exchange.getResponse().setComplete();
 			}
-			return chain.filter(exchange);
+
+			String token = authHeader.substring(7);
+
+			return tokenAuthFacade.validateAndParseToken(token)
+				.flatMap(claimDto -> {
+					String userId = claimDto.userId();
+					String jti = claimDto.jti();
+					String sessionId = claimDto.sessionId();
+
+					log.info("JWT claims: {} {} {}", userId, sessionId, jti);
+
+					var mutatedRequest = exchange.getRequest().mutate()
+						.headers(headers -> {
+							// 클라이언트가 임의로 넣은 내부 헤더 제거
+							headers.remove(HEADER_AUTH_USER_ID);
+							headers.remove(HEADER_AUTH_SESSION_ID);
+							headers.remove(HEADER_AUTH_JTI);
+
+							// Gateway가 검증 후 신뢰 가능한 값만 재주입
+							headers.add(HEADER_AUTH_USER_ID, userId);
+							headers.add(HEADER_AUTH_SESSION_ID, sessionId);
+							headers.add(HEADER_AUTH_JTI, jti);
+						})
+						.build();
+
+					var mutatedExchange = exchange.mutate()
+						.request(mutatedRequest)
+						.build();
+
+					return chain.filter(mutatedExchange);
+				})
+				.onErrorResume(e -> {
+					log.warn("Invalid JWT token: {}", e.getMessage());
+					exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+					return exchange.getResponse().setComplete();
+				});
 		};
 	}
 

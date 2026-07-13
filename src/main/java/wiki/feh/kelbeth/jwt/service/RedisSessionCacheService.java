@@ -23,7 +23,7 @@ public class RedisSessionCacheService {
 	}
 
 	public Mono<Boolean> setValue(SessionCache sessionCache) {
-		return redisOperations.opsForValue().set(sessionCache.getSessionId(), sessionCache.getUuid());
+		return redisOperations.opsForValue().set(sessionCache.getSessionId(), sessionCache.getJti());
 	}
 
 	public Mono<Boolean> deleteValue(String key) {
