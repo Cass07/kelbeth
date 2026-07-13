@@ -1,5 +1,6 @@
 package wiki.feh.kelbeth.tokenapi.domain;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import lombok.AccessLevel;
@@ -21,7 +22,8 @@ public abstract sealed class JWT permits APIAccessToken, APIRefreshToken {
 		this.claims = Map.of(
 			"userId", this.userId,
 			"jti", this.jti,
-			"sid", this.sessionId
+			"sid", this.sessionId,
+			"type", this.getType().getName()
 		);
 	}
 
@@ -36,12 +38,15 @@ public abstract sealed class JWT permits APIAccessToken, APIRefreshToken {
 		this.jti = java.util.UUID.randomUUID().toString();
 	}
 
+	public abstract JWT_TYPE getType();
+
 	public abstract long getDurationMilli();
 
 	public Map<String, String> getRenewedClaims() {
-		Map<String, String> newClaims = new java.util.HashMap<>(this.claims);
+		HashMap<String, String> newClaims = new java.util.HashMap<>(this.claims);
 		newClaims.put("jti", this.jti);
 		newClaims.put("sid", this.sessionId);
+		newClaims.put("type", this.getType().getName());
 
 		return Map.copyOf(newClaims);
 	}

@@ -63,8 +63,9 @@ public class TokenAPIFacade {
 		// 일치하지 않는다면, redis에 저장된 세션을 삭제하고, 유효하지 않은 토큰으로 처리
 
 		return tokenAPIRedisCacheService.getValue(sessionId)
+			.switchIfEmpty(Mono.error(new RuntimeException("Session not found in Redis")))
 			.flatMap(storedJti -> {
-				if (storedJti == null || !storedJti.equals(jti)) {
+				if (!storedJti.equals(jti)) {
 					// Redis에 저장된 jti가 없거나 일치하지 않으면 세션 삭제
 					return tokenAPIRedisCacheService.deleteValue(sessionId)
 						.then(Mono.error(new RuntimeException("Invalid refresh token")));

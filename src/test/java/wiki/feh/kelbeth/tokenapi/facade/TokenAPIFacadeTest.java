@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.context.ActiveProfiles;
 
 import reactor.core.publisher.Mono;
+import wiki.feh.kelbeth.tokenapi.dto.TokenStringPairDto;
 import wiki.feh.kelbeth.tokenapi.service.TokenAPIAuthService;
 import wiki.feh.kelbeth.tokenapi.service.TokenAPIRedisCacheService;
 
@@ -34,11 +35,14 @@ class TokenAPIFacadeTest {
 		// Given
 		String userId = "testUser";
 
-		String token = "tokenString";
+		String accessTokenString = "accessTokenString";
+		String refreshTokenString = "refreshTokenString";
+
+		TokenStringPairDto tokenPairDto = new TokenStringPairDto(accessTokenString, refreshTokenString);
 
 		doReturn(Mono.just(true)).when(tokenAPIRedisCacheService).setValue(anyString(), anyString(), any());
 
-		doReturn(token).when(tokenAPIAuthService).generateToken(any(), any(), anyLong());
+		doReturn(tokenPairDto).when(tokenAPIAuthService).generateTokenStringPair(any(), any());
 
 		// When
 		var resultMono = tokenAPIFacade.login(userId);
@@ -46,8 +50,8 @@ class TokenAPIFacadeTest {
 		// Then
 		var result = resultMono.block();
 		assertNotNull(result);
-		assertEquals(token, result.accessToken());
-		assertEquals(token, result.refreshToken());
+		assertEquals(accessTokenString, result.accessToken());
+		assertEquals(refreshTokenString, result.refreshToken());
 	}
 
 	@DisplayName("로그인 토큰 생성 실패 - Redis 저장 실패")

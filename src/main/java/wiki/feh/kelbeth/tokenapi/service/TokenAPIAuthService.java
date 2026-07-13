@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
-import wiki.feh.kelbeth.jwt.dto.TokenClaimDto;
 import wiki.feh.kelbeth.jwt.util.IJwtManager;
 import wiki.feh.kelbeth.tokenapi.domain.APIRefreshToken;
 import wiki.feh.kelbeth.tokenapi.dto.TokenPairDto;
@@ -24,20 +23,7 @@ public class TokenAPIAuthService {
 	@Qualifier("jwtManagerV1")
 	private final IJwtManager jwtManager;
 
-	public TokenClaimDto validateAndParseToken(String token) {
-		Map<String, String> claims = jwtManager.validateAndParseClaim(token);
-		try {
-			return new TokenClaimDto(
-				claims.get("userId"),
-				claims.get("sessionId"),
-				claims.get("jti")
-			);
-		} catch (NullPointerException _) {
-			throw new IllegalArgumentException("Invalid token claims");
-		}
-	}
-
-	public String generateToken(Map<String, String> claims, LocalDateTime issuedAt,  long durationMilli) {
+	public String generateToken(Map<String, String> claims, LocalDateTime issuedAt, long durationMilli) {
 		return jwtManager.generateToken(claims, issuedAt, durationMilli);
 	}
 
