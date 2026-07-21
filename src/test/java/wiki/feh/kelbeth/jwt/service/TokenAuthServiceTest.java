@@ -39,7 +39,6 @@ class TokenAuthServiceTest {
 		// then
 		assertNotNull(result);
 		assertEquals(TestConstants.ACCESS_CLAIMS.get("userId"), result.userId());
-		assertEquals(TestConstants.ACCESS_CLAIMS.get("sid"), result.sessionId());
 		assertEquals(TestConstants.ACCESS_CLAIMS.get("jti"), result.jti());
 		assertEquals(TestConstants.ACCESS_CLAIMS.get("type"), result.type());
 	}

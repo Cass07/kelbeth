@@ -1,5 +1,6 @@
 package wiki.feh.kelbeth.tokenapi.domain;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -18,6 +19,18 @@ public final class APIAccessToken extends JWT {
 		}
 	}
 
+	public APIAccessToken(String userId) {
+		super(userId);
+	}
+
+	@Override
+	public Map<String, String> getRenewedClaims() {
+		HashMap<String, String> newClaims = new java.util.HashMap<>();
+		newClaims.put("userId", this.getUserId());
+		newClaims.put("jti", this.getJti());
+		newClaims.put("type", this.getType().getName());
+		return Map.copyOf(newClaims);
+	}
 
 	@Override
 	public long getDurationMilli() {

@@ -16,7 +16,6 @@ import wiki.feh.kelbeth.jwt.facade.TokenAuthFacade;
 @Component
 public class JWTFilter extends AbstractGatewayFilterFactory<JWTFilter.Config> {
 	private static final String HEADER_AUTH_USER_ID = "X-Auth-UserId";
-	private static final String HEADER_AUTH_SESSION_ID = "X-Auth-SessionId";
 	private static final String HEADER_AUTH_JTI = "X-Auth-Jti";
 
 	private final TokenAuthFacade tokenAuthFacade;
@@ -42,20 +41,17 @@ public class JWTFilter extends AbstractGatewayFilterFactory<JWTFilter.Config> {
 				.flatMap(claimDto -> {
 					String userId = claimDto.userId();
 					String jti = claimDto.jti();
-					String sessionId = claimDto.sessionId();
 
-					log.info("JWT claims: {} {} {}", userId, sessionId, jti);
+					log.info("JWT claims: {} {}", userId, jti);
 
 					var mutatedRequest = exchange.getRequest().mutate()
 						.headers(headers -> {
 							// 클라이언트가 임의로 넣은 내부 헤더 제거
 							headers.remove(HEADER_AUTH_USER_ID);
-							headers.remove(HEADER_AUTH_SESSION_ID);
 							headers.remove(HEADER_AUTH_JTI);
 
 							// Gateway가 검증 후 신뢰 가능한 값만 재주입
 							headers.add(HEADER_AUTH_USER_ID, userId);
-							headers.add(HEADER_AUTH_SESSION_ID, sessionId);
 							headers.add(HEADER_AUTH_JTI, jti);
 						})
 						.build();
