@@ -25,7 +25,6 @@ public class TokenAuthService {
 
 			return new TokenClaimDto(
 				claims.get("userId"),
-				claims.get("sid"),
 				claims.get("jti"),
 				claims.get("type")
 			);

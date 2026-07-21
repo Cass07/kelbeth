@@ -7,7 +7,7 @@
 - In-memory DB를 사용한 만료 전 토큰의 로그아웃 처리
 - Refresh/Access Token의 발급과 갱신
 - Refresh Token Rotation
-- Refresh Token 탈취 감지 후 자동 로그아웃
+- Refresh Token 탈취 감지 후 토큰 폐기
 
 
 ### JWT Token 관리 매커니즘 및 각 케이스별 애플리케이션 플로우
@@ -23,13 +23,10 @@
 - Access Token 을 재발급할 떄마다, Refresh Token 도 갱신하며, Redis 에서의 value(jti)와 TTL을 갱신함
 
 ### Access Token 인증 시
-- Token의 기본 Validation을 진행
-- Valid하다면, Access Token이 가지고 있는 Session ID 와 jit 를 확인함
-- Session ID를 통해 Key-Value pair를 조회함
-- 존재하고, Value(jit)가 동일한지 확인함
-- 동일하면 유효한 Access 토큰임
-- 동일하지 않다면, Refresh Token 이 탈취되어 다른 Access Token 이 발급된 것임
-  - 이 경우, 해당 세션을 파기하고 Redis 에서의 정보를 삭제함
+- Token의 기본 Validation만을 진행
+  - 기존에는 Redis Session Check를 진행하였으나, 이 경우에는 JWT의 Stateless라는 장점을 다 내다 버리기 때문에, JWT를 쓰는 이유가 없어짐
+- 모든 탈취 감지 및 세션 종료는 Refresh Token과 Refresh 시 처리함
+
 
 ### RTR시
 - Session ID를 통해 Key-Value pair를 조회함
@@ -55,4 +52,7 @@
 
 ### 로그아웃 시
 - Redis 에 저장되어 있는 Session ID KEY 데이터를 삭제함
-  - Access/Refresh Token 확인 시 Session ID에 맞는 Key-Value pair가 없으므로 로그아웃되었음을 확인할 수 있다
+  - Refresh Token 확인 시 Session ID에 맞는 Key-Value pair가 없으므로 로그아웃되었음을 확인할 수 있다
+- Access Token 은 폐기 __안함__
+  - 토큰 폐기가 필요한 경우에는 만료 시간까지를 ttl로 지정해서 redis 등에 해당 access token의 jti를 블랙리스트로 저장하면 된다
+  - 보안 빡세게 필요하면 그냥 2차 인증 넣어
