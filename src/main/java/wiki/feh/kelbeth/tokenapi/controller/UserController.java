@@ -5,7 +5,6 @@ import java.time.Duration;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
 
@@ -21,6 +20,8 @@ public class UserController {
 
 	private final TokenAPIFacade tokenAPIFacade;
 
+	private static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
+
 	@PostMapping("/route/user/refresh")
 	public Mono<Object> refreshToken(
 		@CookieValue(value = "refreshToken", required = false) String refreshToken,
@@ -31,17 +32,9 @@ public class UserController {
 		}
 
 		return tokenAPIFacade.refresh(refreshToken)
-			.flatMap(tp -> {
-				exchange.getResponse().addCookie(
-					org.springframework.http.ResponseCookie.from("refreshToken", tp.refreshToken())
-						.httpOnly(true)
-						// localhost 환경 테스트 용으로 secure와 sameSite 쿠키 옵션은 주석 처리
-						//.secure(true)
-						//.sameSite("Strict")
-						.path("/user/refresh")
-						.maxAge(Duration.ofDays(7))
-						.build());
-				return Mono.just(tp);
+			.map(tp -> {
+				setRefreshTokenCookies(exchange, tp.refreshToken());
+				return tp;
 			});
 	}
 
@@ -51,33 +44,42 @@ public class UserController {
 		ServerWebExchange exchange
 	) {
 		return tokenAPIFacade.login(body.getUserId())
-			.flatMap(tokenPair -> {
-				exchange.getResponse().addCookie(
-					org.springframework.http.ResponseCookie.from("refreshToken", tokenPair.refreshToken())
-						.httpOnly(true)
-						// localhost 환경 테스트 용으로 secure와 sameSite 쿠키 옵션은 주석 처리
-						//.secure(true)
-						//.sameSite("Strict")
-						.path("/user/refresh")
-						.maxAge(Duration.ofDays(7))
-						.build());
-				return Mono.just(tokenPair);
+			.map(tokenPair -> {
+				setRefreshTokenCookies(exchange, tokenPair.refreshToken());
+				return tokenPair;
 			});
 	}
 
 	@PostMapping("/route/user/logout")
 	public Mono<String> logout(
-		@RequestHeader("X-Auth-UserId") String userId,
-		@RequestHeader("X-Auth-SessionId") String sessionId,
-		@RequestHeader("X-Auth-Jti") String jti
+		@CookieValue(value = "refreshToken", required = false) String refreshToken,
+		ServerWebExchange exchange
 	) {
-		return tokenAPIFacade.logout(sessionId)
-			.map(deleted -> {
-				if (Boolean.TRUE.equals(deleted)) {
-					return "Logout successful for userId: " + userId;
-				} else {
-					return "Logout failed for userId: " + userId;
-				}
-			});
+		return tokenAPIFacade.logout(refreshToken)
+			.doFinally(_ -> deleteRefreshTokenCookies(exchange))
+			.map(userId -> "User " + userId + " logged out successfully")
+			.onErrorReturn("Logout failed: " + refreshToken);
+	}
+
+	private void setRefreshTokenCookies(ServerWebExchange exchange, String refreshToken) {
+		addCookie(exchange, REFRESH_TOKEN_COOKIE_NAME, refreshToken, Duration.ofDays(7), "/user/refresh");
+		addCookie(exchange, REFRESH_TOKEN_COOKIE_NAME, refreshToken, Duration.ofDays(7), "/user/logout");
+	}
+
+	private void deleteRefreshTokenCookies(ServerWebExchange exchange) {
+		addCookie(exchange, REFRESH_TOKEN_COOKIE_NAME, "", Duration.ZERO, "/user/refresh");
+		addCookie(exchange, REFRESH_TOKEN_COOKIE_NAME, "", Duration.ZERO, "/user/logout");
+	}
+
+	private void addCookie(ServerWebExchange exchange, String name, String value, Duration maxAge, String path) {
+		exchange.getResponse().addCookie(
+			org.springframework.http.ResponseCookie.from(name, value)
+				.httpOnly(true)
+				// localhost 환경 테스트 용으로 secure와 sameSite 쿠키 옵션은 주석 처리
+				//.secure(true)
+				//.sameSite("Strict")
+				.path(path)
+				.maxAge(maxAge)
+				.build());
 	}
 }

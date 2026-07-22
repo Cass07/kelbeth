@@ -4,6 +4,7 @@ import java.util.Map;
 
 import lombok.NoArgsConstructor;
 import wiki.feh.kelbeth.jwt.dto.TokenClaimDto;
+import wiki.feh.kelbeth.tokenapi.domain.APIRefreshToken;
 
 @NoArgsConstructor(access = lombok.AccessLevel.PRIVATE)
 public final class TestConstants {
@@ -12,6 +13,10 @@ public final class TestConstants {
 		"sid", "testSessionId",
 		"jti", "testJti",
 		"type", "REFRESH_TOKEN"
+	);
+
+	public static final APIRefreshToken REFRESH_TOKEN = new APIRefreshToken(
+		REFRESH_CLAIMS
 	);
 
 	public static final Map<String, String> ACCESS_CLAIMS = Map.of(
