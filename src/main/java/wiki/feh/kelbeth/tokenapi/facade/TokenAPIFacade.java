@@ -64,7 +64,7 @@ public class TokenAPIFacade {
 	private Mono<TokenStringPairDto> getJtiLockAndGenerateTokenPair(APIRefreshToken apiRefreshToken) {
 		return getJtiLockFromRedis(apiRefreshToken.getJti())
 			.filter(Boolean.TRUE::equals)
-			.flatMap(_ -> generateNewTokenPairAndSaveToRedis(apiRefreshToken))
+			.flatMap(_ -> generateNewTokenPairAndSaveToRedis(apiRefreshToken, apiRefreshToken.getJti()))
 			.switchIfEmpty(Mono.defer(() -> readTokenStringPairFromRedis(apiRefreshToken.getJti())));
 	}
 
@@ -83,7 +83,7 @@ public class TokenAPIFacade {
 	 * @param apiRefreshToken refresh token 객체
 	 * @return TokenStringPairDto
 	 */
-	private Mono<TokenStringPairDto> generateNewTokenPairAndSaveToRedis(APIRefreshToken apiRefreshToken) {
+	private Mono<TokenStringPairDto> generateNewTokenPairAndSaveToRedis(APIRefreshToken apiRefreshToken, String oldJti) {
 		TokenPairDto newTokenPair = apiRefreshToken.regenerate();
 		LocalDateTime issuedAt = LocalDateTime.now();
 		TokenStringPairDto tokenStringPairDto = tokenAPIAuthService.generateTokenStringPair(newTokenPair, issuedAt);
@@ -92,7 +92,7 @@ public class TokenAPIFacade {
 				Duration.ofMillis(newTokenPair.refreshToken().getDurationMilli()))
 			.filter(Boolean.TRUE::equals)
 			.switchIfEmpty(Mono.error(new RuntimeException("Failed to save new refresh token in Redis")))
-			.flatMap(_ -> tokenAPIRedisCacheService.setTokenStringPair(apiRefreshToken.getJti(), tokenStringPairDto))
+			.flatMap(_ -> tokenAPIRedisCacheService.setTokenStringPair(oldJti, tokenStringPairDto))
 			.filter(Boolean.TRUE::equals)
 			.switchIfEmpty(Mono.error(new RuntimeException("Failed to save token string pair in Redis")))
 			.thenReturn(tokenStringPairDto);
