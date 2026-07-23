@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import lombok.Getter;
+import wiki.feh.kelbeth.tokenapi.exception.InvalidAccessTokenException;
 
 @Getter
 public final class APIAccessToken extends JWT {
@@ -15,7 +16,7 @@ public final class APIAccessToken extends JWT {
 		super(claims);
 
 		if(!Objects.equals(claims.get("type"), TYPE.getName())) {
-			throw new IllegalArgumentException("Invalid claims for APIRefreshToken");
+			throw new InvalidAccessTokenException();
 		}
 	}
 

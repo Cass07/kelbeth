@@ -1,6 +1,7 @@
 package wiki.feh.kelbeth.tokenapi.dto;
 
 import tools.jackson.databind.ObjectMapper;
+import wiki.feh.kelbeth.tokenapi.exception.InvalidTokenStringPairDtoJsonException;
 
 public record TokenStringPairDto(
 	String accessToken,
@@ -11,8 +12,8 @@ public record TokenStringPairDto(
 	public static TokenStringPairDto fromJson(String json) {
 		try {
 			return objectMapper.readValue(json, TokenStringPairDto.class);
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to parse JSON to TokenStringPairDto", e);
+		} catch (Exception _) {
+			throw new InvalidTokenStringPairDtoJsonException();
 		}
 	}
 }

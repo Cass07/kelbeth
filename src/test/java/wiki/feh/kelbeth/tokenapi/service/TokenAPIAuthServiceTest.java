@@ -19,6 +19,7 @@ import wiki.feh.kelbeth.jwt.util.IJwtManager;
 import wiki.feh.kelbeth.tokenapi.domain.APIAccessToken;
 import wiki.feh.kelbeth.tokenapi.domain.APIRefreshToken;
 import wiki.feh.kelbeth.tokenapi.dto.TokenPairDto;
+import wiki.feh.kelbeth.tokenapi.exception.InvalidRefreshTokenException;
 
 @ActiveProfiles("test")
 @ExtendWith(MockitoExtension.class)
@@ -97,7 +98,7 @@ class TokenAPIAuthServiceTest {
 		doReturn(new HashMap<>(TestConstants.ACCESS_CLAIMS)).when(jwtManager).validateAndParseClaim(refreshToken);
 
 		// When & Then
-		assertThrows(IllegalArgumentException.class, () -> {
+		assertThrows(InvalidRefreshTokenException.class, () -> {
 			tokenAPIAuthService.parseRefreshToken(refreshToken);
 		});
 	}

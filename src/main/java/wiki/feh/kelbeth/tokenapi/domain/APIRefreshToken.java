@@ -6,6 +6,8 @@ import java.util.Objects;
 
 import lombok.Getter;
 import wiki.feh.kelbeth.tokenapi.dto.TokenPairDto;
+import wiki.feh.kelbeth.tokenapi.exception.InvalidClaimException;
+import wiki.feh.kelbeth.tokenapi.exception.InvalidRefreshTokenException;
 
 @Getter
 public final class APIRefreshToken extends JWT {
@@ -17,8 +19,12 @@ public final class APIRefreshToken extends JWT {
 	public APIRefreshToken(Map<String, String> claims) {
 		super(claims);
 
-		if(!Objects.equals(claims.get("type"), TYPE.getName())) {
-			throw new IllegalArgumentException("Invalid claims for APIRefreshToken");
+		if (!Objects.equals(claims.get("type"), TYPE.getName())) {
+			throw new InvalidRefreshTokenException();
+		}
+
+		if (claims.get("sid") == null) {
+			throw new InvalidClaimException();
 		}
 
 		this.sessionId = claims.get("sid");

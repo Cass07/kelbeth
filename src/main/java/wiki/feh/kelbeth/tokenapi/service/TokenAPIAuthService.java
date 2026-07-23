@@ -39,10 +39,6 @@ public class TokenAPIAuthService {
 
 	public APIRefreshToken parseRefreshToken(String token) {
 		Map<String, String> claims = jwtManager.validateAndParseClaim(token);
-		try {
-			return new APIRefreshToken(claims);
-		} catch (NullPointerException _) {
-			throw new IllegalArgumentException("Invalid refresh token claims");
-		}
+		return new APIRefreshToken(claims);
 	}
 }

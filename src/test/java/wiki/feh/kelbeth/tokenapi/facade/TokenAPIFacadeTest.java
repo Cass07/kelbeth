@@ -14,6 +14,9 @@ import org.springframework.test.context.ActiveProfiles;
 import reactor.core.publisher.Mono;
 import wiki.feh.kelbeth.helper.TestConstants;
 import wiki.feh.kelbeth.tokenapi.dto.TokenStringPairDto;
+import wiki.feh.kelbeth.tokenapi.exception.RedisSetFailedException;
+import wiki.feh.kelbeth.tokenapi.exception.SessionNotFoundException;
+import wiki.feh.kelbeth.tokenapi.exception.TokenPairCacheNotFoundException;
 import wiki.feh.kelbeth.tokenapi.service.TokenAPIAuthService;
 import wiki.feh.kelbeth.tokenapi.service.TokenAPIRedisCacheService;
 
@@ -67,7 +70,7 @@ class TokenAPIFacadeTest {
 		var resultMono = tokenAPIFacade.login(userId);
 
 		// Then
-		assertThrows(RuntimeException.class, resultMono::block);
+		assertThrows(RedisSetFailedException.class, resultMono::block);
 	}
 
 	@DisplayName("로그아웃 성공")
@@ -103,7 +106,7 @@ class TokenAPIFacadeTest {
 		var resultMono = tokenAPIFacade.logout(refreshToken);
 
 		// Then
-		assertThrows(RuntimeException.class, resultMono::block);
+		assertThrows(RedisSetFailedException.class, resultMono::block);
 	}
 
 	@DisplayName("Refresh 실패 - session 조회 결과 없음")
@@ -120,11 +123,7 @@ class TokenAPIFacadeTest {
 		var resultMono = tokenAPIFacade.refresh(refreshToken);
 
 		// Then
-		try {
-			resultMono.block();
-		} catch (RuntimeException e) {
-			assertEquals("Session not found in Redis", e.getMessage());
-		}
+		assertThrows(SessionNotFoundException.class, resultMono::block);
 	}
 
 	@DisplayName("Refresh 실패 - jti 불일치")
@@ -142,11 +141,7 @@ class TokenAPIFacadeTest {
 		var resultMono = tokenAPIFacade.refresh(refreshToken);
 
 		// Then
-		try {
-			resultMono.block();
-		} catch (RuntimeException e) {
-			assertEquals("Invalid refresh token", e.getMessage());
-		}
+		assertThrows(SessionNotFoundException.class, resultMono::block);
 	}
 
 	@DisplayName("Refresh 성공 - jti 일치 - lock 선점 성공")
@@ -229,11 +224,7 @@ class TokenAPIFacadeTest {
 		var resultMono = tokenAPIFacade.refresh(refreshToken);
 
 		// Then
-		try {
-			resultMono.block();
-		} catch (RuntimeException e) {
-			assertEquals("Token string pair not found in Redis", e.getMessage());
-		}
+		assertThrows(TokenPairCacheNotFoundException.class, resultMono::block);
 
 		verify(tokenAPIAuthService).parseRefreshToken(refreshToken);
 		verify(tokenAPIRedisCacheService).getValue(sessionId);

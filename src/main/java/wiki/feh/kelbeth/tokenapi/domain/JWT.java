@@ -4,6 +4,7 @@ import java.util.Map;
 
 import lombok.AccessLevel;
 import lombok.Getter;
+import wiki.feh.kelbeth.tokenapi.exception.InvalidClaimException;
 
 @Getter
 public abstract sealed class JWT permits APIAccessToken, APIRefreshToken {
@@ -24,6 +25,10 @@ public abstract sealed class JWT permits APIAccessToken, APIRefreshToken {
 	}
 
 	protected JWT(Map<String, String> claims) {
+
+		if (claims == null || claims.get("userId") == null || claims.get("jti") == null) {
+			throw new InvalidClaimException();
+		}
 		this.claims = claims;
 		this.userId = claims.get("userId");
 		this.jti = claims.get("jti");
