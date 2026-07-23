@@ -6,6 +6,7 @@ import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFac
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import wiki.feh.kelbeth.jwt.facade.TokenAuthFacade;
@@ -62,9 +63,12 @@ public class JWTFilter extends AbstractGatewayFilterFactory<JWTFilter.Config> {
 
 					return chain.filter(mutatedExchange);
 				})
-				.onErrorResume(e -> {
-					log.warn("Invalid JWT token: {}", e.getMessage());
+				.onErrorResume(JwtException.class, e -> {
+					log.warn("Invalid Access token: {}", e.getMessage());
+
+					// 인증 실패 시 401 Unauthorized
 					exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+
 					return exchange.getResponse().setComplete();
 				});
 		};

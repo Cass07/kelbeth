@@ -10,18 +10,14 @@ import org.springframework.util.StopWatch;
 import org.springframework.web.server.ServerWebExchange;
 
 import lombok.extern.slf4j.Slf4j;
-import reactor.core.publisher.Mono;
 
 @NullMarked
 @Slf4j
 @Component
 public class GlobalFilter extends AbstractGatewayFilterFactory<GlobalFilter.Config> {
 
-	private final StopWatch stopWatch;
-
 	public GlobalFilter() {
 		super(Config.class);
-		this.stopWatch = new StopWatch();
 	}
 
 	public static class Config {
@@ -34,15 +30,23 @@ public class GlobalFilter extends AbstractGatewayFilterFactory<GlobalFilter.Conf
 			ServerHttpResponse response = exchange.getResponse();
 
 			// 요청 처리 전 로직
+			StopWatch stopWatch = new StopWatch();
 			stopWatch.start();
 			log.info("[GlobalFilter] Request Path: {}", request.getPath());
 
-			return chain.filter(exchange).then(Mono.fromRunnable(() -> {
-				// 응답 처리 후 로직
-				stopWatch.stop();
-				log.info("[GlobalFilter] Response Status Code: {}", response.getStatusCode());
-				log.info("[GlobalFilter] Request processing time: {} ms", stopWatch.getTotalTimeMillis());
-			}));
+			return chain.filter(exchange)
+				.onErrorResume(throwable -> {
+					// 예외 처리 로직
+					log.error("[GlobalFilter] Exception occurred: {}", throwable.getMessage());
+					response.setStatusCode(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR);
+					return response.setComplete();
+				})
+				.doFinally(_ -> {
+					// 응답 처리 후 로직
+					stopWatch.stop();
+					log.info("[GlobalFilter] Response Status Code: {}", response.getStatusCode());
+					log.info("[GlobalFilter] Request processing time: {} ms", stopWatch.getTotalTimeMillis());
+				});
 		};
 	}
 }
