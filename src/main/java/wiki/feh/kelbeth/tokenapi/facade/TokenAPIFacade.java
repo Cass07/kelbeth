@@ -10,6 +10,9 @@ import reactor.core.publisher.Mono;
 import wiki.feh.kelbeth.tokenapi.domain.APIRefreshToken;
 import wiki.feh.kelbeth.tokenapi.dto.TokenPairDto;
 import wiki.feh.kelbeth.tokenapi.dto.TokenStringPairDto;
+import wiki.feh.kelbeth.tokenapi.exception.RedisSetFailedException;
+import wiki.feh.kelbeth.tokenapi.exception.SessionNotFoundException;
+import wiki.feh.kelbeth.tokenapi.exception.TokenPairCacheNotFoundException;
 import wiki.feh.kelbeth.tokenapi.service.TokenAPIAuthService;
 import wiki.feh.kelbeth.tokenapi.service.TokenAPIRedisCacheService;
 
@@ -33,7 +36,7 @@ public class TokenAPIFacade {
 					Duration.ofMillis(rt.getDurationMilli()));
 			})
 			.filter(Boolean.TRUE::equals)
-			.switchIfEmpty(Mono.error(new RuntimeException("Failed to save refresh token in Redis")))
+			.switchIfEmpty(Mono.error(new RedisSetFailedException("Failed to save refresh token in Redis")))
 			.map(_ -> tokenAPIAuthService.generateTokenStringPair(tokenPairDto, issuedAt));
 	}
 
@@ -42,7 +45,7 @@ public class TokenAPIFacade {
 		String sessionId = apiRefreshToken.getSessionId();
 		return tokenAPIRedisCacheService.deleteValue(sessionId)
 			.filter(Boolean.TRUE::equals)
-			.switchIfEmpty(Mono.error(new RuntimeException("Failed to delete refresh token from Redis")))
+			.switchIfEmpty(Mono.error(new RedisSetFailedException("Failed to delete refresh token from Redis")))
 			.thenReturn(apiRefreshToken.getUserId());
 	}
 
@@ -53,7 +56,7 @@ public class TokenAPIFacade {
 
 		return tokenAPIRedisCacheService.getValue(sessionId)
 			// session id 조회 결과가 없다면 로그인 세션이 만료
-			.switchIfEmpty(Mono.error(new RuntimeException("Session not found in Redis")))
+			.switchIfEmpty(Mono.error(new SessionNotFoundException()))
 			// jti가 일치하면 refresh 가능한 상태로, 락 선점 시도
 			.filter(storedJti -> storedJti.equals(jti))
 			.flatMap(_ -> getJtiLockAndGenerateTokenPair(apiRefreshToken))
@@ -70,7 +73,7 @@ public class TokenAPIFacade {
 
 	private Mono<TokenStringPairDto> deleteInvalidSessionAndError(String sessionId) {
 		return tokenAPIRedisCacheService.deleteValue(sessionId)
-			.then(Mono.error(new RuntimeException("Invalid refresh token")));
+			.then(Mono.error(new SessionNotFoundException()));
 	}
 
 	// 90ms 동안 jti lock을 Redis에 저장하고, 성공하면 true 반환, 실패하면 false 반환
@@ -91,10 +94,10 @@ public class TokenAPIFacade {
 				newTokenPair.refreshToken().getJti(),
 				Duration.ofMillis(newTokenPair.refreshToken().getDurationMilli()))
 			.filter(Boolean.TRUE::equals)
-			.switchIfEmpty(Mono.error(new RuntimeException("Failed to save new refresh token in Redis")))
+			.switchIfEmpty(Mono.error(new RedisSetFailedException("Failed to save new refresh token in Redis")))
 			.flatMap(_ -> tokenAPIRedisCacheService.setTokenStringPair(oldJti, tokenStringPairDto))
 			.filter(Boolean.TRUE::equals)
-			.switchIfEmpty(Mono.error(new RuntimeException("Failed to save token string pair in Redis")))
+			.switchIfEmpty(Mono.error(new RedisSetFailedException("Failed to save token string pair in Redis")))
 			.thenReturn(tokenStringPairDto);
 	}
 
@@ -102,7 +105,7 @@ public class TokenAPIFacade {
 		// race condition 방지를 위해 500ms 지연 후 Redis 에서 토큰 페어를 읽어옴
 		return Mono.delay(Duration.ofMillis(500))
 			.flatMap(_ -> tokenAPIRedisCacheService.getValue(jti))
-			.switchIfEmpty(Mono.error(new RuntimeException("Token string pair not found in Redis")))
+			.switchIfEmpty(Mono.error(new TokenPairCacheNotFoundException()))
 			.map(TokenStringPairDto::fromJson);
 	}
 

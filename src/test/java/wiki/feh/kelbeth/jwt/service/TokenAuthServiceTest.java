@@ -13,6 +13,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.context.ActiveProfiles;
 
+import io.jsonwebtoken.JwtException;
+import wiki.feh.kelbeth.exception.InvalidTokenException;
+import wiki.feh.kelbeth.exception.NotAccessTypeException;
 import wiki.feh.kelbeth.helper.TestConstants;
 import wiki.feh.kelbeth.jwt.dto.TokenClaimDto;
 import wiki.feh.kelbeth.jwt.util.IJwtManager;
@@ -51,10 +54,23 @@ class TokenAuthServiceTest {
 		doReturn(new HashMap<>(TestConstants.REFRESH_CLAIMS)).when(jwtManager).validateAndParseClaim(token);
 
 		// When & Then
-		assertThrows(IllegalArgumentException.class, () -> {
+		assertThrows(NotAccessTypeException.class, () -> {
 			tokenAuthService.validateAndParseAccessToken(token);
 		});
 
+	}
+
+	@DisplayName("validateAndParseAccessToken 실패 - 유효하지 않은 토큰")
+	@Test
+	void testValidateAndParseAccessTokenFailureInvalidToken() {
+		// Given
+		String token = "invalidAccessToken";
+		doThrow(new JwtException("message")).when(jwtManager).validateAndParseClaim(token);
+
+	// When & Then
+		assertThrows(InvalidTokenException.class, () -> {
+			tokenAuthService.validateAndParseAccessToken(token);
+		});
 	}
 
 }
